@@ -1,0 +1,123 @@
+import processing.serial.*;
+
+Serial myPort;  // Create object from Serial class
+int val;     
+import peasy.*; // camera library
+PeasyCam cam;
+int spawnCount = 10;
+int splitCount = 3;
+
+float pMinMass = 0.5;
+float pMaxMass = 5;
+float cMinMass = 10;
+float cMaxMass = 150;
+
+float waterfallSize = 150;
+
+PVector cameraRot = new PVector(25, 10);
+
+ArrayList<Particle> particles = new ArrayList<Particle>(); 
+ArrayList<Collision> collisions = new ArrayList<Collision>();
+
+
+String message;
+int messageX,messageY,messageZ;
+
+String temp;
+
+
+void setup() {
+  size(1280, 720,OPENGL);
+    float fov = PI/3.0;  // field of view
+  float nearClip = 1;
+  float farClip = 100000;
+  float aspect = float(width)/float(height);
+   perspective(fov, aspect, nearClip, farClip);
+  cam = new PeasyCam(this, 400);
+  smooth(0);
+  sphereDetail(6);
+   String portName = Serial.list()[0];
+  myPort = new Serial(this, portName, 115200);
+  for (int i = 0; i < 1; i++) {
+    collisions.add(new Collision(0, 0, 0, 1));
+  }
+  
+  randomizeCollisions();
+}
+
+
+void draw() {
+ background(0);
+  
+ // colorMode(HSB, 360);
+  
+    if(myPort.available()>0){
+    temp = myPort.readString(); //temp for read bytes
+    for(int i = 0; i < temp.length(); i++){
+      //if meet the end mark
+      if(temp.charAt(i) == 'X'){
+        messageX = int(message);
+        message = "";  //clean string
+        
+        
+      }
+      else if(temp.charAt(i) == 'Y')
+      {
+         messageY = int(message);
+        message = "";  //clean string
+        
+      }
+        else if(temp.charAt(i) == 'Z')
+      {
+          messageY = int(message);
+        message = "";  //clean string
+             
+      }
+      else
+        message += temp.charAt(i);  //store byte
+    }
+  }
+  //println(messageX,messageY,messageZ);
+  for (int num = 0; num < spawnCount; num++) {
+    float x = random(-waterfallSize, waterfallSize);
+    float z = random(-waterfallSize/4, waterfallSize/4);
+    float mass = random(pMinMass, pMaxMass);
+    color displayColor;
+    
+    if (particles.size() % 5 == 0) {
+      displayColor = color(255, 255, 255);
+    } else {
+      displayColor = color(255, 255, 255, 220);
+    }
+    
+    particles.add(new Particle(x, 0, z, mass, displayColor,(int)random(2,10)));
+  }
+  
+ // colorMode(RGB, 255);
+  
+
+  
+  for (int i = collisions.size()-1; i > -1; i--) {
+    Collision col = collisions.get(i);
+    
+    col.display();
+  }
+  
+  for (int i = particles.size()-1; i > -1; i--) {
+    Particle p = particles.get(i);
+    
+    p.move();
+    
+    boolean hasCollision = p.resolveCollisions();
+    
+    p.display();
+    
+    if (p.positions[p.tailLength-1].y > height) {
+      particles.remove(i);
+    } else if (hasCollision && p.vel.mag() < 0.5) {
+      particles.remove(i);
+    }
+  }
+
+
+}
