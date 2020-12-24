@@ -1,0 +1,114 @@
+class Particle {
+  
+  PVector[] positions; //locations of the particle
+  PVector vel;  //speed of particle 
+  PVector acc;  //acceleration speed of the particle 
+  float mass;   // number of the particle 
+  color displayColor;   // color 
+  float fallRate;  //refreshment rate 
+  int tailLength; //length of the raindrops 
+  int total;
+  Particle(float x, float y, float z, float mass, color displayColor,int tailLength_) {
+    
+    tailLength = tailLength_;
+    positions = new PVector[tailLength]; 
+   
+        for(int i=0;i<positions.length;i++){
+      positions[i] = new PVector (x, y, z); // initate the postion of the particles
+    }
+    this.vel = new PVector(0, 0, 0);
+    this.acc = new PVector(0, 0, 0);
+    this.mass = mass;
+    this.displayColor = displayColor;
+    this.fallRate = map(this.mass, pMinMass, pMaxMass, 0.1, 0.05);
+  }
+  
+  void move() {
+    PVector gravity = new PVector(0, this.fallRate);
+    this.acc.add(gravity);
+    
+    this.vel.add(this.acc);
+        if(total<(tailLength-1)){total++;}
+   
+    for( int i=total; i>=1; i-- ){
+      positions[i].x = positions[i-1].x;
+      positions[i].y = positions[i-1].y;
+      positions[i].z = positions[i-1].z;
+     
+    }
+   positions[0].add(this.vel);
+    this.acc.mult(0);
+  }
+  
+  boolean resolveCollisions() {
+    boolean hasCollision = false;
+    
+    for (int c = 0; c < collisions.size(); c++) {
+      Collision col = collisions.get(c);
+      
+      float distance = dist( this.positions[0].x, this.positions[0].y, this.positions[0].z, col.pos.x, col.pos.y, col.pos.z);
+      
+      if (distance < col.mass/2) {
+        PVector offset = new PVector(this.positions[0].x, this.positions[0].y, this.positions[0].z);
+        offset.sub(col.pos);
+        offset.normalize();
+        offset.mult(col.mass/2-distance);
+        this.positions[0].add(offset);
+        
+        float friction = 0.3;
+        float dampening = map(this.mass, pMinMass, pMaxMass, 1, 0.8);
+        float mag = this.vel.mag();
+        
+        // The further to the center a particle is, the further it will shoot out.
+        float magAddition = min(col.mass/2-distance, 15);
+        
+        PVector bounce = new PVector(this.positions[0].x, this.positions[0].y, this.positions[0].z);
+        bounce.sub(col.pos);
+        bounce.normalize();
+        bounce.mult((mag+magAddition)*friction*dampening);
+        this.vel = bounce;
+        
+        if (this.mass > 2) {
+          this.mass = max(1, this.mass-2);
+          
+          for (int s = 0; s < splitCount; s++) {
+            float mass = max(1, this.mass-1);
+            color displayColor = color(255, 200);
+            
+            Particle splash = new Particle(this.positions[0].x, this.positions[0].y, this.positions[0].z, mass, displayColor,(int)random(2,10));
+            
+            splash.vel = new PVector(this.vel.x, this.vel.y, this.vel.z);
+            splash.vel.rotate(radians(random(-45, 45)));
+            splash.vel.mult(random(0.6, 0.9));
+            
+            particles.add(splash);
+          }
+        }
+        
+        hasCollision = true;
+        
+        break;
+      }
+    }
+    
+    return hasCollision;
+  }
+  
+  void display() {
+    pushMatrix();
+    
+  
+    
+    strokeWeight(this.mass);
+    stroke(255);
+       for( int i = total-1; i >= 0; i-- ){
+    
+      //println( total + " " + i );
+      //strokeWeight(map(i,0,100,5,1)); // to make shrinking tail effect
+      strokeWeight(map(i,0,100,1,6)); // to make shrinking head effect
+      point (positions[i].x, positions[i].y, positions[i].z);
+    }
+    
+    popMatrix();
+  }
+}
